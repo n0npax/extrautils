@@ -2,6 +2,7 @@
 
 extern crate extra;
 extern crate coreutils;
+extern crate termion;
 
 use std::env;
 use std::io::{stdout, StdoutLock, stderr, Stderr, Write};
@@ -9,6 +10,7 @@ use std::process::exit;
 use std::time::{SystemTime, UNIX_EPOCH};
 use coreutils::{ArgParser, get_time_tuple};
 use extra::option::OptionalExt;
+use termion::color;
 
 const MAN_PAGE: &'static str = r#"
 NAME
@@ -53,54 +55,66 @@ struct CalendarDay {
 }
 
 struct CalendarWeek {
-    week_num: String,
-    month: i8,
+    week_num: i8,
+    month: String,
     days: Vec<CalendarDay>,
     mon_first: bool,
 }
 
-struct CalendarYear {
-    weeks: Vec<CalendarWeek>,
-}
-
 impl CalendarDay {
-    pub fn new() -> CalendarDay {
-        CalendarDay {year: 0, month: 0, day: 0, leap: false, weekday: -1}
+    pub fn new(year: i64, month: i8, day: i8) -> CalendarDay {
+        let leap = (year%4==0 && year%400==0) || (year%4==0 && year%100!=0); // https://en.wikipedia.org/wiki/Leap_year#Algorithm
+        let dummy_active_date = CalendarDay { year: year, month: month, day: day, leap: leap, weekday: -1};
+        let weekday = get_week_day(get_days_since_epoch(dummy_active_date));
+        CalendarDay {year: year, month: month, day: day, leap: leap, weekday: weekday}
     }
 }
 
 impl CalendarWeek {
     pub fn new() -> CalendarWeek {
-        CalendarWeek {month : -1, mon_first: true, week_num: "".to_string(), days: Vec::new() }
+        CalendarWeek {month : "".to_owned(), mon_first: false, week_num: -1, days: Vec::new() }
     }
 }
 
-    fn print_calendar(active_date: CalendarDay, stdout: &mut StdoutLock, stderr: &mut Stderr)
-{
+fn print_calendar(active_date: CalendarDay, stdout: &mut StdoutLock, stderr: &mut Stderr) {
 
-    let mut some_day = active_date;
-    //let mut some_day_year_start = active_date;
-    //some_day_year_start.month = 1;
-    //some_day_year_start.year =1;
-    let mpl_range = -1..2;
-    for mpl in mpl_range {
-        some_day.month = active_date.month + mpl;
+    let mut calendar_string = ["".to_owned(), "".to_owned(), "".to_owned(), "".to_owned(), "".to_owned(), "".to_owned()].to_vec();
+
+
+    //for month_shift in -1..2 {
+    for month_shift in 0..1 {
+        let mut some_day = CalendarDay::new(active_date.year, active_date.month + month_shift, 1);
+
         let mut cw = CalendarWeek::new();
-
-        for e in -1..some_day.weekday {
-            cw.days.push(CalendarDay::new());
+        for _ in 0..some_day.weekday {
+            cw.days.push(CalendarDay::new(some_day.year, some_day.month, 0));
         }
-
         for day_num in get_month_days(some_day).iter() {
-            some_day.day = (*day_num) as i8;
-            some_day.weekday = get_week_day(get_days_since_epoch(some_day));
-            //some_day.week_num = get_days_since_date(some_day, some_day_year_start);
-            cw.days.push(some_day);
+            cw.days.push(CalendarDay::new(some_day.year, some_day.month, (*day_num) as i8));
         }
-        for day in cw.days {
-            stdout.write(&format!("{:?}\n", day).as_bytes()).try(stderr);
+        for _ in cw.days.len()..37 {
+            cw.days.push(CalendarDay::new(some_day.year, some_day.month, 0));
+        }
+
+        for (week_num, week) in cw.days.chunks(7).enumerate() {
+            let mut calendar_row = "".to_owned();
+            for day in week {
+                if day.day > 0 {
+                    if day.day == active_date.day && day.month == active_date.month {
+                        calendar_row.push_str(&format!("{}{}", color::Bg(color::White), color::Fg(color::Black)));
+                    }
+                    calendar_row.push_str(&format!("{:>5}({}) ", day.day, day.weekday));
+                    calendar_row.push_str(&format!("{}{}", color::Bg(color::Reset), color::Fg(color::Reset)));
+                } else {
+                    calendar_row.push_str(&format!("{:>5} ", ""));
+                }
+            }
+            calendar_string[week_num].push_str(&calendar_row);
+            calendar_string[week_num].push_str("\t");
         }
     }
+    stdout.write(calendar_string.join("\n").as_bytes()).try(stderr);
+    stdout.write("\n".as_bytes()).try(stderr);
 }
 
 
@@ -126,7 +140,7 @@ fn get_day_from_args(arg: &String) -> i64 {
 
 fn get_week_day(days_since_epoch: i64) -> i8 {
     // 0 sun
-    match (days_since_epoch%7) as i8 {
+    match ((days_since_epoch+3)%7) as i8 {
         day_num @ 0...6 => day_num,
         day_num @ -6...-1 => 4-day_num.abs(),
         _ => panic!("can't determine weekday"),
@@ -179,7 +193,7 @@ fn get_days_since_date(cal_date: CalendarDay, since_date: CalendarDay) -> i64 {
     // 01.01.1970 thu
     let mut year_shift = since_date.year - cal_date.year;
     let mut months_shift = since_date.month - cal_date.month;
-    let mut days_shift = since_date.day - cal_date.day;
+    let days_shift = since_date.day - cal_date.day;
 
     let mut days = 0;
     let mut pivot_date = cal_date; // copy;
@@ -219,7 +233,7 @@ fn main() {
     let mut stdout = stdout.lock();
     let mut stderr = stderr();
 
-    let mut parser = ArgParser::new(1)
+    let mut parser = ArgParser::new(8)
         .add_flag(&["h", "help"])
         .add_flag(&["1"])
         .add_flag(&["3"])
@@ -261,21 +275,9 @@ fn main() {
         }
     }
 
-    let leap = year%4==0 && year%100!=0 && year%400==0; // https://en.wikipedia.org/wiki/Leap_year#Algorithm
-    let mut active_date = CalendarDay {
-        year: year,
-        month: month as i8,
-        day: day as i8,
-        leap: leap,
-        weekday: 0,
-    };
+    let active_date = CalendarDay::new(year, month as i8, day as i8);
 
-    let days_since_epoch = get_days_since_epoch(active_date);
-    active_date.weekday = get_week_day(days_since_epoch);
-
-
-
-    //stdout.write(&format!("{:?}\ni {:?}", get_month_days(active_date),active_date).as_bytes()).try(&mut stderr);
+//    stdout.write(&format!("{:?}\ni {:?}", get_month_days(active_date),active_date).as_bytes()).try(&mut stderr);
 
     print_calendar(active_date, &mut stdout, &mut stderr);
 
