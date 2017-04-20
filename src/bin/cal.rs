@@ -145,7 +145,7 @@ impl CalendarDay {
     }
 
 
-    pub fn days_in_year(&self) -> i64 {
+    pub fn get_days_in_year(&self) -> i64 {
         if self.year == 1752 {
             return 365 - 12;
         } else if self.leap {
@@ -196,7 +196,7 @@ impl CalendarDay {
         while year_diff != 0 {
             year_diff += way_pivot;
             pivot_date.year += way_pivot;
-            days -= pivot_date.days_in_year() * way_pivot;
+            days -= pivot_date.get_days_in_year() * way_pivot;
         }
 
         let way_pivot = get_way_pivot(month_diff as i64);
@@ -387,9 +387,30 @@ fn test_cal_days_in_month(){
         assert_eq!(some_day.get_month_days().len(), *days_num);
     }
 }
+#[test]
+fn test_cal_days_in_year() {
+    let george = CalendarDay::new(1752, 9, 1);
+    assert_eq!(george.get_days_in_year(), 365 - 12);
+    let some_leap_year = CalendarDay::new(4, 4, 4);
+    assert_eq!(some_leap_year.get_days_in_year(), 366);
+    let some_non_leap_year = CalendarDay::new(3, 3, 3);
+    assert_eq!(some_non_leap_year.get_days_in_year(), 365);
+}
 
 #[test]
-fn test_days_gaps(){
+fn test_weekdays() {
+    let before_george = CalendarDay::new(1751,1,1);
+    let after_george = CalendarDay::new(1753,1,1);
+    let epoch = CalendarDay::new(1970, 1, 1);
+    let warsaw_uprising = CalendarDay::new(1944, 8, 1);
+    let perestroika = CalendarDay::new(1980,5,1);
+
+    //TODO
+}
+
+
+#[test]
+fn test_days_since_epoch(){
     let before_george = CalendarDay::new(1751,1,1);
     let after_george = CalendarDay::new(1753,1,1);
     let epoch = CalendarDay::new(1970, 1, 1);
@@ -398,4 +419,6 @@ fn test_days_gaps(){
 
     //assert_ne!(format_system_time(now), format_system_time(future));
     //assert_eq!(format_system_time(now)[..15], format_system_time(future)[..15]);
+    //TODO
 }
+
