@@ -60,29 +60,28 @@ struct CalendarWeek {
     days: Vec<CalendarDay>,
     mon_first: bool,
 }
-
+impl PartialEq for CalendarDay {
+    fn eq(&self, other: &CalendarDay) -> bool {
+        self.year == other.year && self.month == other.month && self.day == other.day && self.leap == other.leap && self.weekday == other.weekday
+    }
+}
 impl CalendarDay {
     pub fn new(year: i64, month: i8, day: i8) -> CalendarDay {
         let leap = (year % 4 == 0 && year % 400 == 0) || (year % 4 == 0 && year % 100 != 0); // https://en.wikipedia.org/wiki/Leap_year#Algorithm
-        let dummy_active_date = CalendarDay {
+        let mut some_date = CalendarDay {
             year: year,
             month: month,
             day: day,
             leap: leap,
             weekday: -1,
         };
-        let weekday = dummy_active_date.get_week_day();
-        CalendarDay {
-            year: year,
-            month: month,
-            day: day,
-            leap: leap,
-            weekday: weekday,
-        }
+        some_date.get_week_day();
+        some_date
     }
 
     pub fn shift_year(&mut self, shift: i64) {
         self.year += shift;
+        self.get_week_day();
     }
 
     pub fn shift_month(&mut self, shift: i8) {
@@ -99,6 +98,7 @@ impl CalendarDay {
             1...12 => {}
             _ => panic!("month shift failed"),
         }
+        self.get_week_day();
     }
 
 
@@ -124,6 +124,7 @@ impl CalendarDay {
         } else if self.day < 0 || self.day > days_in_month {
             panic!("day shift failed");
         }
+        self.get_week_day();
     }
 
     pub fn get_month_days(&self) -> Vec<i64> {
@@ -153,15 +154,14 @@ impl CalendarDay {
         return 365;
     }
 
-    pub fn get_week_day(&self) -> i8 {
+    pub fn get_week_day(&mut self) {
         let days_since_epoch = self.get_days_since_epoch();
         if self.day == -1 {
-            return -1
+            self.weekday = -1
         }
-        match ((days_since_epoch+3) % 7) as i8 {
-            e @ 0...6 => e,
-            _ => panic!("can't determine weekday ({}) \n-> {:?}", days_since_epoch, self),
-        }
+        let weekday = ((days_since_epoch+3) % 7) as i8;
+        self.weekday = weekday;
+
     }
 
     fn get_days_since_epoch(&self) -> i64 {
@@ -196,14 +196,14 @@ impl CalendarDay {
         while year_diff != 0 {
             year_diff += way_pivot;
             pivot_date.year += way_pivot;
-            days += pivot_date.days_in_year() * way_pivot;
+            days -= pivot_date.days_in_year() * way_pivot;
         }
 
         let way_pivot = get_way_pivot(month_diff as i64);
         while month_diff != 0 {
             month_diff += way_pivot as i8;
             pivot_date.shift_month(way_pivot as i8);
-            days += pivot_date.get_month_days().len() as i64 * way_pivot;
+            days -= pivot_date.get_month_days().len() as i64 * way_pivot;
         }
 
         days += days_diff as i64;
@@ -211,7 +211,7 @@ impl CalendarDay {
         if self.year < 1752 || (self.year == 1752 && self.month < 9) || (self.year == 1752 && self.month == 9 && self.day < 14) {
             days -= 12;
         }
-        println!("{} || {:?}\n  || {:?}\n-----------",days, self, since_date);
+        //println!("{} || {:?}\n  || {:?}\n-----------",days, self, since_date);
 
         days
     }
@@ -284,12 +284,6 @@ fn get_day_from_args(arg: &String) -> i64 {
 
 
 
-
-
-
-
-
-
 fn main() {
     let stdout = stdout();
     let mut stdout = stdout.lock();
@@ -343,4 +337,65 @@ fn main() {
 
     print_calendar(active_date, &mut stdout, &mut stderr);
 
+}
+
+
+#[test]
+fn test_cal_shifts() {
+    let mut some_flexible_day = CalendarDay::new(1998, 2, 5);
+    let some_day_1_6 = CalendarDay::new(1998, 1, 5);
+    let some_day_3_5 = CalendarDay::new(1998, 3, 5);
+    let some_day_12_5 = CalendarDay::new(1998, 12, 5);
+    assert_ne!(some_day_1_6, some_flexible_day);
+    assert_ne!(some_flexible_day, some_day_3_5);
+    assert_ne!(some_day_3_5, some_day_12_5);
+    some_flexible_day.shift_month(1);
+    assert_eq!(some_flexible_day, some_day_3_5);
+    some_flexible_day.shift_month(-1);
+    assert_ne!(some_day_1_6, some_flexible_day);
+    some_flexible_day.shift_month(-1);
+    assert_eq!(some_flexible_day, some_day_1_6);
+
+    some_flexible_day.shift_month(-1);
+    assert_ne!(some_flexible_day, some_day_12_5); // same day other year
+    some_flexible_day.shift_year(1);
+    assert_eq!(some_flexible_day, some_day_12_5);
+}
+ #[test]
+fn test_cal_days_shifts() {
+
+ let mut some_flexible_day = CalendarDay::new(1999,2,5);
+    let some_day_2_10 = CalendarDay::new(1999, 2, 10);
+    let some_day_3_1 = CalendarDay::new(1999, 3, 1);
+    some_flexible_day.shift_day(5);
+    assert_eq!(some_day_2_10, some_flexible_day);
+    some_flexible_day.shift_day(19);
+    assert_eq!(some_day_3_1, some_flexible_day);
+    // TODO shift from 22.02 -> 5.03
+
+}
+
+#[test]
+fn test_cal_days_in_month(){
+    let george = CalendarDay::new(1752,9,1);
+    assert_eq!(george.get_month_days().len(), 31-12);
+    let some_leap_year = CalendarDay::new(4, 2, 2);
+    assert_eq!(some_leap_year.get_month_days().len(), 29);
+
+    for (month_num, days_num) in [31,28,31,30,31,30,31,31,30,31,30,31].into_iter().enumerate() {
+        let some_day = CalendarDay::new(1, month_num as i8 + 1,1); // enumerate starts with 0, months with 1
+        assert_eq!(some_day.get_month_days().len(), *days_num);
+    }
+}
+
+#[test]
+fn test_days_gaps(){
+    let before_george = CalendarDay::new(1751,1,1);
+    let after_george = CalendarDay::new(1753,1,1);
+    let epoch = CalendarDay::new(1970, 1, 1);
+    let warsaw_uprising = CalendarDay::new(1944, 8, 1);
+    let perestroika = CalendarDay::new(1980,5,1);
+
+    //assert_ne!(format_system_time(now), format_system_time(future));
+    //assert_eq!(format_system_time(now)[..15], format_system_time(future)[..15]);
 }
