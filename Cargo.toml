@@ -81,5 +81,5 @@ libflate = "0.1.4"
 pager = { git = "https://github.com/redox-os/libpager.git" }
 raw-cpuid = "2.0"
 redox_syscall = "0.1"
-coreutils =  { git = "https://github.com/n0npax/coreutils.git", branch = "refactor-lib.rs-tu-use-separate-function-for-computing-date"}
+coreutils =  { git = "https://github.com/redox-os/coreutils.git" }
 termion = { git = "https://github.com/redox-os/termion.git" }

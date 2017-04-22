@@ -21,36 +21,35 @@ SYNOPSIS
    cal [options] <timestamp>
 
 DESCRIPTION
-   cal  displays  a  simple  calendar.  If no arguments are specified, the current month is dis‐
-   played.
+   displays  a  simple  calendar.  If there's no agruments specified, it will display current date
 
-   The month may be specified as a number (1-12), as a month name or  as  an  abbreviated  month
-   name according to the current locales.
+   The month may be specified as a number (1-12).
+   months accepts also 0 (previous year december) and 13 (next year january)
 
 OPTIONS
    -1, --one
-      Display single month output.  (This is the default.)
+      Display single month output.  (default)
 
    -3, --three
       Display three months spanning the date.
 
    -n, --months number
-        Display number of months, starting from the month containing the date.
+      Display number of months, starts with current date.
 
    -y, --year
-        Display a calendar for the whole year.
+      Display a calendar for the whole year.
 
    -Y, --twelve
-        Display a calendar for the next twelve months.
+      Display a calendar for the next twelve months.
 
    -m, -monday
-       monday as first day of week
+      Monday as first day
 
    -s, -sunday
-       sunday as first day of week
+      Sunday as first day
 
-    -h, --help
-        display this help and exit
+   -h, --help
+       display this help and exit
 AUTHOR
     Marcin Niemira
 "#; /* @MANEND */
@@ -150,7 +149,7 @@ impl CalendarDay {
             self.day = dummy_active_date.get_month_days().len() as i64;
         } else if self.day <0 || self.day > days_in_month +1 {
             // self.day -= shift;
-            // TODO add by 1 day
+            // TODO need to implement if someone will need to shift 2+ days
         } else if self.day == -1 && shift == 0 {
             // hidden day
         } else if self.year == 1752 && self.month == 9 && self.day < 31 {
