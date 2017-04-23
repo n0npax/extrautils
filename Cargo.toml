@@ -68,6 +68,10 @@ name = "screenfetch"
 path = "src/bin/screenfetch.rs"
 
 [[bin]]
+name = "tar"
+path = "src/bin/tar.rs"
+
+[[bin]]
 name = "watch"
 path = "src/bin/watch.rs"
 
@@ -82,4 +86,5 @@ pager = { git = "https://github.com/redox-os/libpager.git" }
 raw-cpuid = "2.0"
 redox_syscall = "0.1"
 coreutils =  { git = "https://github.com/redox-os/coreutils.git" }
+tar = "0.4"
 termion = { git = "https://github.com/redox-os/termion.git" }
