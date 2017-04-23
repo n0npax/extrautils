@@ -65,10 +65,10 @@ fn print_calendar(parser: &ArgParser, active_date: CalendarDay, stdout: &mut Std
     let weekdays_names;
     let weekdays_complement;
     if monday_first {
-        weekdays_complement = 1;
+        weekdays_complement = 0;
         weekdays_names = "Mo Tu We Th Fr Sa Su";
     } else {
-        weekdays_complement = 0;
+        weekdays_complement = 1;
         weekdays_names = "Su Mo Tu We Th Fr Sa";
     }
 
@@ -100,8 +100,15 @@ fn print_calendar(parser: &ArgParser, active_date: CalendarDay, stdout: &mut Std
             let mut some_week = CalendarWeek::new();
 
             // complement weeks with dummy days [_,_,_,1,2,3,4]
-            for _ in weekdays_complement..some_day.weekday {
-                some_week.days.push(CalendarDay::new(some_day.year, some_day.month, -1));
+
+            match some_day.weekday +weekdays_complement {
+                0 => {},
+                e @ 1...7 => {
+                    for _ in 1..e {
+                        some_week.days.push(CalendarDay::new(some_day.year, some_day.month, -1));
+                    }
+                },
+                q => panic!("shouldn't happen: {:?}", q),
             }
             for day_num in some_day.get_month_days().iter() {
                 some_week.days.push(CalendarDay::new(some_day.year, some_day.month, (*day_num) as i64));

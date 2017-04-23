@@ -21,6 +21,16 @@ impl PartialEq for CalendarDay {
         self.year == other.year && self.month == other.month && self.day == other.day && self.leap == other.leap && self.weekday == other.weekday
     }
 }
+
+impl CalendarWeek {
+    pub fn new() -> CalendarWeek {
+        CalendarWeek {
+            week_num: -1,
+            days: Vec::new(),
+        }
+    }
+}
+
 impl CalendarDay {
     pub fn new(year: i64, month: i64, day: i64) -> CalendarDay {
         let mut this_date = CalendarDay {
@@ -134,27 +144,51 @@ impl CalendarDay {
         // Sakamoto's methods -> https://en.wikipedia.org/wiki/Determination_of_the_day_of_the_week#Implementation-dependent_methods
         let (year, month, day) = (self.year, self.month, self.day);
         let sakamoto_array: [i64; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
-        let mut m_year = year;
-        m_year -= match month {
-            0...3 => 1,
-            _ => 0,
+        let m_year = match month {
+            0|1|2 => self.year - 1,
+            _ => self.year,
         };
         //Sakamoto method works fine for dates 1752+
         let mut george_shift = 0;
-        if year < 1752 || year == 1752 && month < 10 {
+        if year < 1752 || (year == 1752 && month < 10) {
             george_shift = 4;
         }
         self.weekday = ((m_year + m_year / 4 - m_year / 100 + m_year / 400 + sakamoto_array[(month - 1) as usize] + day + george_shift) % 7) as i64;
     }
 }
+#[test]
+fn test_weekdays() {
+    let before_george = CalendarDay::new(1751, 1, 1);
+    let after_george = CalendarDay::new(1753, 6, 8);
+    let epoch = CalendarDay::new(1970, 1, 1);
+    let warsaw_uprising = CalendarDay::new(1944, 8, 1);
+    let perestroika = CalendarDay::new(1980, 5, 1);
 
-impl CalendarWeek {
-    pub fn new() -> CalendarWeek {
-        CalendarWeek {
-            week_num: -1,
-            days: Vec::new(),
-        }
-    }
+    let random_day1 = CalendarDay::new(2002, 12, 1);
+    let random_day2 = CalendarDay::new(2002, 12, 2);
+    let random_day3 = CalendarDay::new(2002, 12, 3);
+    let random_day4 = CalendarDay::new(2002, 12, 4);
+    let random_day5 = CalendarDay::new(2002, 12, 5);
+    let random_day6 = CalendarDay::new(2002, 12, 6);
+    let random_day7 = CalendarDay::new(2002, 12, 7);
+
+
+    assert_eq!(epoch.weekday, 4); // Th
+    assert_eq!(warsaw_uprising.weekday, 2); //Tu
+    assert_eq!(perestroika.weekday, 4); // Th
+
+    assert_eq!(before_george.weekday, 2); // Tu
+    assert_eq!(after_george.weekday, 5); // Fr
+
+    assert_eq!(random_day1.weekday, 0);
+    assert_eq!(random_day2.weekday, 1);
+    assert_eq!(random_day3.weekday, 2);
+    assert_eq!(random_day4.weekday, 3);
+    assert_eq!(random_day5.weekday, 4);
+    assert_eq!(random_day6.weekday, 5);
+    assert_eq!(random_day7.weekday, 6);
+
+
 }
 
 #[test]
@@ -189,21 +223,6 @@ fn test_cal_days_in_year() {
     assert_eq!(some_leap_year.get_days_in_year(), 366);
     let some_non_leap_year = CalendarDay::new(3, 3, 3);
     assert_eq!(some_non_leap_year.get_days_in_year(), 365);
-}
-
-#[test]
-fn test_weekdays() {
-    let before_george = CalendarDay::new(1751, 1, 1);
-    let after_george = CalendarDay::new(1753, 6, 8);
-    let epoch = CalendarDay::new(1970, 1, 1);
-    let warsaw_uprising = CalendarDay::new(1944, 8, 1);
-    let perestroika = CalendarDay::new(1980, 5, 1);
-
-    assert_eq!(before_george.weekday, 2);
-    assert_eq!(after_george.weekday, 5);
-    assert_eq!(epoch.weekday, 4);
-    assert_eq!(warsaw_uprising.weekday, 2);
-    assert_eq!(perestroika.weekday, 4);
 }
 
 #[test]

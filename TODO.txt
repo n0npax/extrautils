@@ -1,5 +1,5 @@
 - [~] calc
-- [~] cal 
+- [~] cal (week num, julian cal)
 - [ ] rd (less)
 - [~] sc (spellcheck)
 - [ ] shuf
